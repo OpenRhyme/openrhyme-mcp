@@ -24,9 +24,8 @@ dependencies = [
 Homepage = "https://github.com/OpenRhyme/openrhyme-mcp"
 Engine = "https://github.com/OpenRhyme/OpenRhyme"
 
-# Planned console entry point once a server module exists (see CLAUDE.md):
-# [project.scripts]
-# openrhyme-mcp = "openrhyme_mcp.server:main"
+[project.scripts]
+openrhyme-mcp = "openrhyme_mcp.server:main"
 
 [build-system]
 requires = ["uv_build>=0.11.29,<0.12.0"]
