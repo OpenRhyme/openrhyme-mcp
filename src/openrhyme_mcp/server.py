@@ -56,6 +56,10 @@ def events(
 ) -> dict[str, Any]:
     """Raw activity events between `since` and `until`, oldest first.
 
+    Returns {"events": [...rows...], "count": N}; each row's keys are the event columns
+    (bundle_id, app_name, window_title, kind, value, ...) and a local-ISO "time" field. Read
+    result["events"] for the rows.
+
     Times accept `2h` / `30m` / `1d` (that long ago), unix seconds, or ISO-8601.
     `kinds` filters by event kind (e.g. `app.activated`, `window.focused`,
     `context.snapshot`, `element.value_changed`); `app` by bundle identifier.
