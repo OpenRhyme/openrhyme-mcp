@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from mcp.server.mcpserver import MCPServer
-from mcp.server.mcpserver.exceptions import ToolError
+from mcp.server.mcpserver.exceptions import ResourceError, ToolError
 
 from . import __version__
 from .config import SUPPORTED_SCHEMA, resolve
@@ -32,6 +32,13 @@ def _tool_error(code: str, message: str, hint: str | None) -> ToolError:
     if hint:
         text += f" (hint: {hint})"
     return ToolError(text)
+
+
+def _resource_error(code: str, message: str, hint: str | None) -> ResourceError:
+    text = f"{code}: {message}"
+    if hint:
+        text += f" (hint: {hint})"
+    return ResourceError(text)
 
 
 def _parse_time(name: str, text: str | None) -> float | None:
@@ -153,7 +160,7 @@ def recent_events() -> str:
     try:
         conn = open_readonly(settings.db_path)
     except StoreError as exc:
-        raise _tool_error(exc.code, exc.message, exc.hint) from exc
+        raise _resource_error(exc.code, exc.message, exc.hint) from exc
     try:
         since = datetime.now(UTC).timestamp() - 15 * 60
         rows = query_events(conn, since=since, limit=500, max_value_chars=500)
@@ -173,11 +180,20 @@ def _handshake() -> None:
         except EngineError:
             found = None
     if found is None and settings.db_path.exists():
-        conn = open_readonly(settings.db_path)
         try:
-            found = schema_version(conn)
-        finally:
-            conn.close()
+            conn = open_readonly(settings.db_path)
+        except StoreError as exc:
+            if exc.code == "schema_too_new":
+                sys.stderr.write(
+                    f"openrhyme-mcp: {exc.code} — {exc.message}. Upgrade openrhyme-mcp.\n"
+                )
+                sys.exit(5)
+            # db_not_found (no database yet): no schema known, proceed.
+        else:
+            try:
+                found = schema_version(conn)
+            finally:
+                conn.close()
     if found is not None and found > SUPPORTED_SCHEMA:
         sys.stderr.write(
             f"openrhyme-mcp: schema_too_new — engine schema {found}, supported {SUPPORTED_SCHEMA}. "

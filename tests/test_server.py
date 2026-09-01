@@ -1,12 +1,15 @@
 import json
+import sqlite3
 from pathlib import Path
 from typing import Any
 
 import pytest
 from mcp.client import Client
+from mcp.shared.exceptions import MCPError
 from mcp.types import TextContent
 
-from openrhyme_mcp.server import mcp
+from openrhyme_mcp.server import _handshake, mcp
+from tests.conftest import DDL
 
 
 def payload(result: Any) -> Any:
@@ -109,3 +112,46 @@ async def test_recent_resource(seeded_data_dir: Path, monkeypatch: pytest.Monkey
     assert hasattr(body, "text")
     # The fixture is dated 2025, so "recent" (last 15 minutes) is empty JSONL.
     assert body.text == ""
+
+
+@pytest.mark.anyio
+async def test_recent_resource_missing_db_raises_resource_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("OPENRHYME_DATA_DIR", str(tmp_path))
+    async with Client(mcp) as client:
+        with pytest.raises(MCPError) as exc_info:
+            await client.read_resource("openrhyme://events/recent")
+    assert "db_not_found" in str(exc_info.value)
+
+
+def test_handshake_exits_5_on_schema_too_new(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    conn = sqlite3.connect(data_dir / "events.sqlite")
+    conn.executescript(DDL)
+    conn.execute("UPDATE meta SET value = '2' WHERE key = 'schema_version'")
+    conn.commit()
+    conn.close()
+
+    empty_bin = tmp_path / "empty-bin"
+    empty_bin.mkdir()
+    monkeypatch.setenv("OPENRHYME_DATA_DIR", str(data_dir))
+    monkeypatch.setenv("PATH", str(empty_bin))
+    monkeypatch.delenv("OPENRHYME_BIN", raising=False)
+
+    with pytest.raises(SystemExit) as exc_info:
+        _handshake()
+    assert exc_info.value.code == 5
+
+
+def test_handshake_ignores_missing_db(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    empty_bin = tmp_path / "empty-bin"
+    empty_bin.mkdir()
+    monkeypatch.setenv("OPENRHYME_DATA_DIR", str(tmp_path / "data"))
+    monkeypatch.setenv("PATH", str(empty_bin))
+    monkeypatch.delenv("OPENRHYME_BIN", raising=False)
+
+    _handshake()  # must not raise: no database yet is not fatal
