@@ -35,7 +35,7 @@ def run_cli(args: Sequence[str], *, settings: Settings, timeout: float = 10.0) -
         completed = subprocess.run(
             command, capture_output=True, text=True, timeout=timeout, check=False
         )
-    except FileNotFoundError as exc:
+    except (FileNotFoundError, PermissionError) as exc:
         raise EngineError("engine_not_found", f"Cannot execute {settings.engine_bin}") from exc
     except subprocess.TimeoutExpired as exc:
         raise EngineError(
@@ -56,9 +56,13 @@ def run_cli(args: Sequence[str], *, settings: Settings, timeout: float = 10.0) -
     if envelope.get("ok") is True:
         data = envelope.get("data")
         return data if isinstance(data, dict) else {"result": data}
-    error = envelope.get("error") or {}
-    raise EngineError(
-        str(error.get("code", "engine_error")),
-        str(error.get("message", "engine reported a failure")),
-        error.get("hint"),
-    )
+
+    error_obj = envelope.get("error")
+    error = error_obj if isinstance(error_obj, dict) else {}
+    code = error.get("code")
+    code = str(code) if isinstance(code, str) else "engine_error"
+    message = error.get("message")
+    message = message if isinstance(message, str) else "engine reported a failure"
+    hint = error.get("hint")
+    hint = hint if isinstance(hint, str) else None
+    raise EngineError(code, message, hint)

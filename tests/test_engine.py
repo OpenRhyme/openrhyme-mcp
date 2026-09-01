@@ -1,3 +1,4 @@
+import stat
 from pathlib import Path
 
 import pytest
@@ -48,4 +49,50 @@ def test_timeout(fake_engine: Path) -> None:
 def test_bad_output(fake_engine: Path) -> None:
     with pytest.raises(EngineError) as info:
         run_cli(["garbage"], settings=resolve())
+    assert info.value.code == "engine_bad_output"
+
+
+def _fake_binary(path: Path, stdout: str) -> Path:
+    path.write_text(f"#!/bin/sh\necho '{stdout}'\n")
+    path.chmod(path.stat().st_mode | stat.S_IEXEC)
+    return path
+
+
+def test_error_field_not_a_dict(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    script = _fake_binary(tmp_path / "openrhyme", '{"ok": false, "error": "boom"}')
+    monkeypatch.setenv("OPENRHYME_BIN", str(script))
+    with pytest.raises(EngineError) as info:
+        run_cli(["version"], settings=resolve())
+    assert info.value.code == "engine_error"
+
+
+def test_error_code_null_falls_back(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    script = _fake_binary(tmp_path / "openrhyme", '{"ok": false, "error": {"code": null}}')
+    monkeypatch.setenv("OPENRHYME_BIN", str(script))
+    with pytest.raises(EngineError) as info:
+        run_cli(["version"], settings=resolve())
+    assert info.value.code == "engine_error"
+
+
+def test_non_executable_binary(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    script = tmp_path / "openrhyme"
+    script.write_text("#!/bin/sh\necho hi\n")
+    monkeypatch.setenv("OPENRHYME_BIN", str(script))
+    with pytest.raises(EngineError) as info:
+        run_cli(["version"], settings=resolve())
+    assert info.value.code == "engine_not_found"
+
+
+def test_non_dict_data_is_wrapped(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    script = _fake_binary(tmp_path / "openrhyme", '{"ok": true, "data": [1, 2, 3]}')
+    monkeypatch.setenv("OPENRHYME_BIN", str(script))
+    data = run_cli(["version"], settings=resolve())
+    assert data == {"result": [1, 2, 3]}
+
+
+def test_top_level_array_is_bad_output(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    script = _fake_binary(tmp_path / "openrhyme", "[1, 2]")
+    monkeypatch.setenv("OPENRHYME_BIN", str(script))
+    with pytest.raises(EngineError) as info:
+        run_cli(["version"], settings=resolve())
     assert info.value.code == "engine_bad_output"
