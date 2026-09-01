@@ -40,7 +40,7 @@ All tools are `@mcp.tool()` functions with type hints (the SDK derives the schem
 
 | Tool | Signature | Backed by | Notes |
 |---|---|---|---|
-| `events` | `(since: str, until: str \| None = None, kinds: list[str] \| None = None, app: str \| None = None, limit: int = 200, max_value_chars: int = 2000) -> list[dict]` | `store.query_events` | Rows ordered by `ts, id`; `limit` capped at 2000. `value` and `selected_text` are **truncated to `max_value_chars`** with a `…[truncated N chars]` suffix — the store holds full text, tool results must not blow the model's context. `max_value_chars=0` disables truncation |
+| `events` | `(since, until=None, kinds=None, app=None, limit=200, max_value_chars=2000) -> dict` returning `{"events": [...rows...], "count": n}` | `store.query_events` | Rows ordered by `ts, id`; `limit` capped at 2000. `value` and `selected_text` are **truncated to `max_value_chars`** with a `…[truncated N chars]` suffix — the store holds full text, tool results must not blow the model's context. `max_value_chars=0` disables truncation |
 | `status` | `() -> dict` | `openrhyme status --json` | The engine's `data` object verbatim, plus `mcp: {version, schema_supported, db_path, db_present}` |
 | `apps` | `() -> dict` | `openrhyme apps list --json` + `apps running --json` | `{allowlist: [...], running: [...]}` |
 | `allow_app` / `deny_app` | `(bundle_id: str) -> dict` | `openrhyme apps allow\|deny` | The only state-changing tools; they go through the CLI, never the config file |
