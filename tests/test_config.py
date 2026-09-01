@@ -34,3 +34,21 @@ def test_default_data_dir_and_path_lookup(tmp_path: Path) -> None:
 def test_missing_binary_is_none(tmp_path: Path) -> None:
     settings = resolve({"PATH": str(tmp_path), "HOME": str(tmp_path)})
     assert settings.engine_bin is None
+
+
+def test_tilde_data_dir_uses_injected_home(tmp_path: Path) -> None:
+    settings = resolve({"OPENRHYME_DATA_DIR": "~/data", "HOME": str(tmp_path)})
+    assert settings.data_dir == tmp_path / "data"
+
+
+def test_tilde_engine_bin_uses_injected_home(tmp_path: Path) -> None:
+    settings = resolve({"OPENRHYME_BIN": "~/bin/openrhyme", "HOME": str(tmp_path)})
+    assert settings.engine_bin == tmp_path / "bin" / "openrhyme"
+
+
+def test_omitted_path_does_not_leak_real_path(tmp_path: Path) -> None:
+    on_path = tmp_path / "openrhyme"
+    on_path.write_text("#!/bin/sh\n")
+    on_path.chmod(on_path.stat().st_mode | stat.S_IEXEC)
+    settings = resolve({"HOME": str(tmp_path)})
+    assert settings.engine_bin is None

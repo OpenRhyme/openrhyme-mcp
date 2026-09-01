@@ -26,12 +26,19 @@ class Settings:
         return self.data_dir / "config.json"
 
 
+def _expand(path_str: str, source: Mapping[str, str]) -> Path:
+    if path_str == "~" or path_str.startswith("~/"):
+        home = source.get("HOME") or str(Path.home())
+        return Path(home) / path_str[2:] if path_str.startswith("~/") else Path(home)
+    return Path(path_str)
+
+
 def resolve(env: Mapping[str, str] | None = None) -> Settings:
     """Resolve settings from `env` (defaults to the process environment)."""
     source = os.environ if env is None else env
     override = source.get("OPENRHYME_DATA_DIR", "").strip()
     if override:
-        data_dir = Path(override).expanduser()
+        data_dir = _expand(override, source)
     else:
         home = Path(source.get("HOME", "")).expanduser() if source.get("HOME") else Path.home()
         data_dir = home / "Library" / "Application Support" / "OpenRhyme"
@@ -39,9 +46,9 @@ def resolve(env: Mapping[str, str] | None = None) -> Settings:
     engine_bin: Path | None = None
     explicit = source.get("OPENRHYME_BIN", "").strip()
     if explicit:
-        engine_bin = Path(explicit).expanduser()
+        engine_bin = _expand(explicit, source)
     else:
-        found = shutil.which("openrhyme", path=source.get("PATH"))
+        found = shutil.which("openrhyme", path=source.get("PATH", ""))
         engine_bin = Path(found) if found else None
 
     return Settings(data_dir=data_dir, engine_bin=engine_bin)
