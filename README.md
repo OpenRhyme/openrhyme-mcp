@@ -2,7 +2,7 @@
 
 A thin [Model Context Protocol](https://modelcontextprotocol.io) server that exposes the timeline captured by the [OpenRhyme engine](https://github.com/OpenRhyme/OpenRhyme) to any agent — Claude, local models, your own scripts — over stdio.
 
-> **Status:** pre-implementation. The workspace is scaffolded; no server code exists yet. The engine it depends on is at the same stage.
+> **Status:** MVP implemented on this branch — a stdio MCP server exposing the engine's raw event timeline and app-allowlist controls, tested against a fixture store and a fake engine binary. The engine it depends on ([OpenRhyme/OpenRhyme](https://github.com/OpenRhyme/OpenRhyme)) has its Part 1 (capture) complete. Pending: dogfooding against a live engine capture; richer retrieval (sessions, search, embeddings) is future work.
 
 ## What it is, and is not
 
@@ -27,16 +27,20 @@ Everything stays on your machine. The agent host that spawns this server is the 
 
 The full process topology, the CLI/JSON contract, and the store layout are specified in the engine repo: [`docs/engine-interface.md`](https://github.com/OpenRhyme/OpenRhyme/blob/main/docs/engine-interface.md). That document is the contract this server implements; it is not duplicated here.
 
-## Planned tools
+## Tools & resources
 
-| MCP tool | Backed by |
+| MCP tool | Returns |
 |---|---|
-| `timeline(since, until)` | sessions in `warm.sqlite` |
-| `search(query)` | FTS5 `MATCH` over `warm.sqlite` (embeddings later) |
-| `now()` | the last few minutes of `hot.sqlite` |
-| `status()` | `openrhyme status --json` |
-| `allow_app(bundle_id)` / `deny_app(bundle_id)` | `openrhyme apps … --json` |
-| `compact()` | `openrhyme compact --json` |
+| `events(since, until, kinds, app, limit, max_value_chars)` | raw events in a time window: `{"events": [...], "count": n}` |
+| `status()` | engine trust/daemon/store status, plus this server's schema and db info |
+| `apps()` | the capture allowlist and currently running apps |
+| `allow_app(bundle_id)` / `deny_app(bundle_id)` | add/remove an app from the capture allowlist, by bundle identifier |
+
+| MCP resource | Contents |
+|---|---|
+| `openrhyme://events/recent` | the last 15 minutes of raw events, as JSON Lines |
+
+Richer retrieval (sessions, full-text search, embeddings) is future work, not yet built.
 
 ## Development
 
