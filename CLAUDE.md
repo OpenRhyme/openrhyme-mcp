@@ -6,7 +6,7 @@ A thin MCP server (Python, stdio) exposing the OpenRhyme engine's computer-histo
 
 ## State (2026-09-01)
 
-Workspace scaffolded, no implementation. `src/openrhyme_mcp/__init__.py` is a docstring-only stub. **The MVP design is approved: `docs/superpowers/specs/2026-09-01-mvp-mcp-server-design.md`** — read it before implementing; plans live in `docs/superpowers/plans/`. The engine is also pre-implementation; build against its MVP spec (`../OpenRhyme/docs/superpowers/specs/2026-09-01-mvp-capture-engine-design.md`, schema v1 in §7.1) and fixture data.
+Implemented per the MVP plan: `timespec`, `config`, `store`, `engine`, `server` with tools `events`/`status`/`apps`/`allow_app`/`deny_app` and the `openrhyme://events/recent` resource. `src/openrhyme_mcp/__init__.py` is a docstring-only stub. **The MVP design is approved: `docs/superpowers/specs/2026-09-01-mvp-mcp-server-design.md`** — read it before implementing; plans live in `docs/superpowers/plans/`. The engine is also pre-implementation; build against its MVP spec (`../OpenRhyme/docs/superpowers/specs/2026-09-01-mvp-capture-engine-design.md`, schema v1 in §7.1) and fixture data.
 
 ## Non-negotiables
 

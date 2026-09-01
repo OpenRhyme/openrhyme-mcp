@@ -45,19 +45,20 @@ Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/).
 ```sh
 make sync        # uv sync --all-groups
 make check       # ruff + mypy (strict) + pytest
+uv run openrhyme-mcp   # serve on stdio (Ctrl-C to stop)
 ```
 
-CI runs the same checks on Ubuntu and macOS 26.
+Tests run in-process against a fixture database and a fake `openrhyme` script; they never need the real engine or a macOS permission. CI runs on Ubuntu and macOS 26.
 
-## Using it with an agent (planned)
+## Using it with an agent
 
-Once a release exists, the intended install is `uvx openrhyme-mcp`, and registering it with an agent host will look like:
+With the engine built (`../OpenRhyme`, `make build`) and on `PATH` — or pointed to via `OPENRHYME_BIN`:
 
 ```sh
-claude mcp add openrhyme -- uvx openrhyme-mcp
+claude mcp add openrhyme -- uv run --directory /path/to/openrhyme-mcp openrhyme-mcp
 ```
 
-The server locates the engine binary via `OPENRHYME_BIN`, then `openrhyme` on `PATH`.
+Then ask: *"What was I doing between 2 and 3 pm?"* — the model calls `events(since="…", until="…")`. Tools: `events`, `status`, `apps`, `allow_app`, `deny_app`; resource: `openrhyme://events/recent`. Environment: `OPENRHYME_DATA_DIR` (engine data dir), `OPENRHYME_BIN` (engine binary).
 
 ## License
 

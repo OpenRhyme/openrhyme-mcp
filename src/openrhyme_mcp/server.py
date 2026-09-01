@@ -106,6 +106,46 @@ def status() -> dict[str, Any]:
     return data
 
 
+def _validated_bundle_id(bundle_id: str) -> str:
+    candidate = bundle_id.strip()
+    if "." not in candidate or " " in candidate:
+        raise _tool_error(
+            "usage",
+            f"{bundle_id!r} is not a bundle identifier",
+            "expected e.g. com.apple.TextEdit; call `apps` to see running apps",
+        )
+    return candidate
+
+
+def _engine(args: list[str]) -> dict[str, Any]:
+    try:
+        return run_cli(args, settings=resolve())
+    except EngineError as exc:
+        raise _tool_error(exc.code, exc.message, exc.hint) from exc
+
+
+@mcp.tool()
+def apps() -> dict[str, Any]:
+    """The capture allowlist and the currently running apps (with bundle identifiers, whether
+    each is allowlisted, and whether it is an Electron app)."""
+    allowlist = _engine(["apps", "list"]).get("allowlist", [])
+    running = _engine(["apps", "running"]).get("apps", [])
+    return {"allowlist": allowlist, "running": running}
+
+
+@mcp.tool()
+def allow_app(bundle_id: str) -> dict[str, Any]:
+    """Add an app to the capture allowlist by bundle identifier (e.g. com.apple.Safari).
+    Takes effect within a few seconds; the daemon reloads its config on each heartbeat."""
+    return _engine(["apps", "allow", _validated_bundle_id(bundle_id)])
+
+
+@mcp.tool()
+def deny_app(bundle_id: str) -> dict[str, Any]:
+    """Remove an app from the capture allowlist by bundle identifier."""
+    return _engine(["apps", "deny", _validated_bundle_id(bundle_id)])
+
+
 @mcp.resource("openrhyme://events/recent", mime_type="application/x-ndjson")
 def recent_events() -> str:
     """The last 15 minutes of raw events as JSON Lines (values cut to 500 chars)."""
