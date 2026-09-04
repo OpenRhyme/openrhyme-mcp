@@ -13,7 +13,7 @@ from mcp.server.mcpserver.exceptions import ResourceError, ToolError
 from . import __version__
 from .config import SUPPORTED_SCHEMA, resolve
 from .engine import EngineError, run_cli
-from .store import StoreError, open_readonly, query_events, schema_version
+from .store import StoreError, open_readonly, schema_version
 from .timespec import TimeSpecError, parse
 
 mcp = MCPServer(
@@ -70,29 +70,21 @@ def events(
     Times accept `2h` / `30m` / `1d` (that long ago), unix seconds, or ISO-8601.
     `kinds` filters by event kind (e.g. `app.activated`, `window.focused`,
     `context.snapshot`, `element.value_changed`); `app` by bundle identifier.
-    `value`/`selected_text` are cut to `max_value_chars` (0 = full text). `limit` ≤ 2000.
+    `value`/`selected_text` are redacted by the engine and cut to `max_value_chars` (0 = full
+    text). `limit` ≤ 2000.
     """
-    settings = resolve()
-    since_ts = _parse_time("since", since)
-    until_ts = _parse_time("until", until)
-    assert since_ts is not None
-    try:
-        conn = open_readonly(settings.db_path)
-    except StoreError as exc:
-        raise _tool_error(exc.code, exc.message, exc.hint) from exc
-    try:
-        rows = query_events(
-            conn,
-            since=since_ts,
-            until=until_ts,
-            kinds=kinds,
-            app=app,
-            limit=limit,
-            max_value_chars=max_value_chars,
-        )
-    finally:
-        conn.close()
-    return {"events": rows, "count": len(rows)}
+    _parse_time("since", since)
+    _parse_time("until", until)
+    args: list[str] = ["events", "--since", since]
+    if until is not None:
+        args += ["--until", until]
+    for kind in kinds or []:
+        args += ["--kind", kind]
+    if app is not None:
+        args += ["--app", app]
+    args += ["--limit", str(limit), "--max-value-chars", str(max_value_chars)]
+    data = _engine(args)
+    return {"events": data.get("events", []), "count": data.get("count", 0)}
 
 
 @mcp.tool()
@@ -157,15 +149,13 @@ def deny_app(bundle_id: str) -> dict[str, Any]:
 def recent_events() -> str:
     """The last 15 minutes of raw events as JSON Lines (values cut to 500 chars)."""
     settings = resolve()
+    since = datetime.now(UTC).timestamp() - 15 * 60
+    args = ["events", "--since", str(since), "--limit", "500", "--max-value-chars", "500"]
     try:
-        conn = open_readonly(settings.db_path)
-    except StoreError as exc:
+        data = run_cli(args, settings=settings)
+    except EngineError as exc:
         raise _resource_error(exc.code, exc.message, exc.hint) from exc
-    try:
-        since = datetime.now(UTC).timestamp() - 15 * 60
-        rows = query_events(conn, since=since, limit=500, max_value_chars=500)
-    finally:
-        conn.close()
+    rows = data.get("events", [])
     return "\n".join(json.dumps(row, ensure_ascii=False) for row in rows)
 
 

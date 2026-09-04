@@ -14,8 +14,7 @@ from pathlib import Path
 import pytest
 
 # Copied verbatim from the engine spec §7.1 (OpenRhyme/docs/superpowers/specs/
-# 2026-09-01-mvp-capture-engine-design.md). Keep in sync by hand; test_store checks that
-# the columns here match store.COLUMNS.
+# 2026-09-01-mvp-capture-engine-design.md). Keep in sync by hand.
 DDL = """
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 INSERT OR IGNORE INTO meta VALUES ('schema_version', '1');
@@ -189,6 +188,9 @@ def fake_engine(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Pat
         '  "apps allow") echo \'{"ok":true,"data":{"allowlist":["com.apple.Safari","\'"$3"\'"],'
         '"changed":true}}\' ;;\n'
         '  "apps deny") echo \'{"ok":true,"data":{"allowlist":[],"changed":true}}\' ;;\n'
+        '  events*) echo \'{"ok":true,"data":{"events":[{"id":1,"kind":"app.activated",'
+        '"pid":10,"bundle_id":"com.apple.Safari","app_name":"Safari","value":"hi",'
+        '"time":"2025-09-01T00:00:00-07:00"}],"count":1}}\' ;;\n'
         '  "fail --json") echo \'{"ok":false,"error":{"code":"not_trusted","message":"no",'
         '"hint":"grant it"}}\'; exit 3 ;;\n'
         '  "hang --json") sleep 30 ;;\n'
