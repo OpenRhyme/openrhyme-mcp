@@ -21,7 +21,8 @@ mcp = MCPServer(
     instructions=(
         "OpenRhyme records the user's activity on their Mac (allowlisted apps only) as raw "
         "events. Use `events` to read what they were doing in a time range; timestamps are "
-        "local ISO-8601 in `time`. Values are truncated by default; pass max_value_chars=0 "
+        "local ISO-8601 in `time`. Event text is redacted by the engine on read (protect "
+        "rules and secret redaction apply) and truncated by default; pass max_value_chars=0 "
         "for full text when you really need it."
     ),
 )
@@ -147,7 +148,8 @@ def deny_app(bundle_id: str) -> dict[str, Any]:
 
 @mcp.resource("openrhyme://events/recent", mime_type="application/x-ndjson")
 def recent_events() -> str:
-    """The last 15 minutes of raw events as JSON Lines (values cut to 500 chars)."""
+    """The last 15 minutes of raw events as JSON Lines (redacted by the engine on read;
+    values cut to 500 chars)."""
     settings = resolve()
     since = datetime.now(UTC).timestamp() - 15 * 60
     args = ["events", "--since", str(since), "--limit", "500", "--max-value-chars", "500"]
